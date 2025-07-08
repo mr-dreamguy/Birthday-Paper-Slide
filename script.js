@@ -10,66 +10,80 @@ class Paper {
   prevMouseY = 0;
   velX = 0;
   velY = 0;
-  rotation = Math.random() * 30 - 15;
   currentPaperX = 0;
   currentPaperY = 0;
-  rotating = false;
 
   init(paper) {
-    document.addEventListener("mousemove", (e) => {
-      if (!this.rotating) {
-        this.mouseX = e.clientX;
-        this.mouseY = e.clientY;
+    const moveHandler = (x, y) => {
+      this.mouseX = x;
+      this.mouseY = y;
 
-        this.velX = this.mouseX - this.prevMouseX;
-        this.velY = this.mouseY - this.prevMouseY;
-      }
-
-      const dirX = e.clientX - this.mouseTouchX;
-      const dirY = e.clientY - this.mouseTouchY;
-      const dirLength = Math.sqrt(dirX * dirX + dirY * dirY);
-      const dirNormalizedX = dirX / dirLength;
-      const dirNormalizedY = dirY / dirLength;
-
-      const angle = Math.atan2(dirNormalizedY, dirNormalizedX);
-      let degrees = (180 * angle) / Math.PI;
-      degrees = (360 + Math.round(degrees)) % 360;
-      if (this.rotating) {
-        this.rotation = degrees;
-      }
+      this.velX = this.mouseX - this.prevMouseX;
+      this.velY = this.mouseY - this.prevMouseY;
 
       if (this.holdingPaper) {
-        if (!this.rotating) {
-          this.currentPaperX += this.velX;
-          this.currentPaperY += this.velY;
-        }
+        this.currentPaperX += this.velX;
+        this.currentPaperY += this.velY;
+
         this.prevMouseX = this.mouseX;
         this.prevMouseY = this.mouseY;
 
-        paper.style.transform = `translateX(${this.currentPaperX}px) translateY(${this.currentPaperY}px) rotateZ(${this.rotation}deg)`;
+        paper.style.transform = `translateX(${this.currentPaperX}px) translateY(${this.currentPaperY}px)`;
       }
-    });
+    };
 
-    paper.addEventListener("mousedown", (e) => {
+    // Mouse move
+    document.addEventListener("mousemove", (e) =>
+      moveHandler(e.clientX, e.clientY)
+    );
+
+    // Touch move
+    document.addEventListener(
+      "touchmove",
+      (e) => {
+        if (this.holdingPaper) {
+          e.preventDefault(); // Prevent page scroll
+          const touch = e.touches[0];
+          moveHandler(touch.clientX, touch.clientY);
+        }
+      },
+      { passive: false }
+    );
+
+    const startDrag = (x, y) => {
       if (this.holdingPaper) return;
+
       this.holdingPaper = true;
 
-      paper.style.zIndex = highestZ;
-      highestZ += 1;
+      paper.style.zIndex = highestZ++;
+      this.mouseTouchX = x;
+      this.mouseTouchY = y;
+      this.prevMouseX = x;
+      this.prevMouseY = y;
+      this.mouseX = x;
+      this.mouseY = y;
+    };
 
+    // Mouse down
+    paper.addEventListener("mousedown", (e) => {
       if (e.button === 0) {
-        this.mouseTouchX = this.mouseX;
-        this.mouseTouchY = this.mouseY;
-        this.prevMouseX = this.mouseX;
-        this.prevMouseY = this.mouseY;
-      }
-      if (e.button === 2) {
-        this.rotating = true;
+        // Left-click only
+        startDrag(e.clientX, e.clientY);
       }
     });
+
+    // Touch start
+    paper.addEventListener("touchstart", (e) => {
+      const touch = e.touches[0];
+      startDrag(touch.clientX, touch.clientY);
+    });
+
+    // End drag on mouse or touch release
     window.addEventListener("mouseup", () => {
       this.holdingPaper = false;
-      this.rotating = false;
+    });
+    window.addEventListener("touchend", () => {
+      this.holdingPaper = false;
     });
   }
 }
